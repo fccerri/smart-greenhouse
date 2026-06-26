@@ -1,0 +1,8 @@
+# Binários compilados
+/gerenciador
+/sensor
+/atuador
+/cliente
+
+# Objetos
+*.o
