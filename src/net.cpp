@@ -1,4 +1,4 @@
-// net.cpp — Implementacao dos helpers de socket TCP.
+// net.cpp - Implementacao dos helpers de socket TCP.
 
 #include "net.hpp"
 
@@ -19,7 +19,7 @@ bool send_all(int fd, const uint8_t* buf, size_t n) {
     while (enviados < n) {
         ssize_t r = ::send(fd, buf + enviados, n - enviados, 0);
         if (r <= 0) {
-            if (r < 0 && errno == EINTR) continue;  // interrompido por sinal
+            if (r < 0 && errno == EINTR) continue; // interrompido por sinal
             return false;
         }
         enviados += static_cast<size_t>(r);
@@ -31,7 +31,7 @@ bool recv_all(int fd, uint8_t* buf, size_t n) {
     size_t recebidos = 0;
     while (recebidos < n) {
         ssize_t r = ::recv(fd, buf + recebidos, n - recebidos, 0);
-        if (r == 0) return false;                    // conexao fechada
+        if (r == 0) return false; // conexao fechada
         if (r < 0) {
             if (errno == EINTR) continue;
             return false;

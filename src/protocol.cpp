@@ -1,4 +1,4 @@
-// protocol.cpp — Implementacao da (de)serializacao do protocolo "ES".
+// protocol.cpp - Implementacao da (de)serializacao do protocolo "ES".
 
 #include "protocol.hpp"
 

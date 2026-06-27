@@ -1,9 +1,9 @@
-// atuador.cpp — Processo de Atuador (parametrizado pela categoria).
+// atuador.cpp - Processo de Atuador (parametrizado pela categoria).
 //
 // Uso: ./atuador <A|R|S|I> <ip> <porta>
 //   A = aquecedor, R = resfriador, S = sistema de irrigacao, I = injetor de CO2.
 //
-// Fluxo (requisitos 2.1-2.3):
+// Fluxo:
 //   conecta -> CONEXAO -> espera CONF_CONEXAO -> aguarda COMANDO_ATUACAO,
 //   liga/desliga o estado interno e responde CONF_ATUACAO com o status atual.
 
@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     std::string ip = argv[2];
     uint16_t porta = static_cast<uint16_t>(std::atoi(argv[3]));
 
-    std::cout << std::unitbuf;  // descarrega cada log na hora
+    std::cout << std::unitbuf; // descarrega cada log na hora
 
     int fd = net::conectar(ip, porta);
     if (fd < 0) return 1;

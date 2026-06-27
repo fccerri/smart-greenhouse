@@ -1,4 +1,4 @@
-// protocol.hpp — Definicao do protocolo de aplicacao "ES" (Estufa Inteligente).
+// protocol.hpp - Definicao do protocolo de aplicacao "ES" (Estufa Inteligente).
 //
 // O protocolo roda sobre TCP. Cada mensagem possui um HEADER fixo de 5 bytes
 // seguido de um PAYLOAD de tamanho fixo que depende do campo Tipo.
@@ -8,10 +8,6 @@
 //   byte 2   : Tipo da mensagem (ver enum Tipo)
 //   byte 3   : ID do Remetente  (categoria do componente, ver enum Cat)
 //   byte 4   : ID do Destinatario (categoria do componente)
-//
-// IMPORTANTE: como TCP e um fluxo de bytes (sem fronteiras de mensagem), o
-// tamanho do payload NAO viaja no header; ele e deduzido do Tipo pela funcao
-// payload_size(). Isso permite ao receptor ler exatamente os bytes certos.
 
 #ifndef PROTOCOL_HPP
 #define PROTOCOL_HPP
@@ -62,7 +58,7 @@ enum class Cat : uint8_t {
 };
 
 // Estrutura logica de uma mensagem ja decodificada. O payload e mantido como
-// bytes crus; helpers abaixo convertem para/de tipos concretos.
+// bytes crus. Helpers abaixo convertem para/de tipos concretos.
 struct Mensagem {
     Tipo    tipo;
     uint8_t remetente;    // valor de Cat
@@ -81,7 +77,7 @@ std::vector<uint8_t> serializar(const Mensagem& m);
 // for valido. Nao le payload (quem chama le payload_size(tipo) bytes depois).
 bool desserializar_header(const uint8_t* header, Mensagem& out);
 
-// ---- Helpers de payload (ordem de rede / big-endian para portabilidade) ----
+// Helpers de payload (ordem de rede / big-endian)
 
 // float <-> 4 bytes big-endian (via uint32_t + htonl/ntohl).
 std::vector<uint8_t> float_para_bytes(float v);

@@ -1,6 +1,6 @@
-# Makefile — Estufa Inteligente (SSC0142)
-# SO: Linux        Compilador: g++ (suporta C++17)
-# Compilar: make          Limpar: make clean
+# Makefile         Estufa Inteligente (SSC0142)
+# SO: Linux        Compilador: g++
+# Compilar: make   Limpar: make clean
 
 CXX      := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -Iinclude -pthread
@@ -26,4 +26,4 @@ cliente: $(SRC)/cliente.cpp $(COMUM)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 clean:
-	rm -f $(BIN)
+	rm -f $(BIN) net.o

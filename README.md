@@ -1,4 +1,4 @@
-# Estufa Inteligente — SSC0142 (Redes de Computadores)
+# Estufa Inteligente - SSC0142 (Redes de Computadores)
 
 Implementação do protocolo de aplicação **"ES"** (Estufa Inteligente) sobre
 **sockets TCP**. Cada componente do sistema é um **processo separado** do SO,
@@ -31,21 +31,21 @@ make clean    # remove os binários
 Cada componente em um terminal. Exemplo com a porta `8080`:
 
 ```bash
-# Terminal 1 — servidor
+# Terminal 1 - servidor
 ./gerenciador 8080
 
-# Terminais 2-4 — sensores
+# Terminais 2-4 - sensores
 ./sensor T 127.0.0.1 8080
 ./sensor U 127.0.0.1 8080
 ./sensor O 127.0.0.1 8080
 
-# Terminais 5-8 — atuadores
+# Terminais 5-8 - atuadores
 ./atuador A 127.0.0.1 8080
 ./atuador R 127.0.0.1 8080
 ./atuador S 127.0.0.1 8080
 ./atuador I 127.0.0.1 8080
 
-# Terminal 9 — cliente (menu interativo)
+# Terminal 9 - cliente (menu interativo)
 ./cliente 127.0.0.1 8080
 ```
 

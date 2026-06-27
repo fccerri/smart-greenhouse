@@ -1,17 +1,17 @@
-// gerenciador.cpp — Servidor da estufa (Gerenciador).
+// gerenciador.cpp - Servidor da estufa (Gerenciador).
 //
-// Responsabilidades (requisitos 3.x):
-//   3.1 aceitar conexao de sensores e atuadores (e do cliente);
-//   3.2 receber leituras de todos os sensores e armazenar o ultimo valor;
-//   3.3 ligar/desligar atuadores quando uma leitura sai dos limites min/max
-//       configurados (controle bang-bang com histerese pela propria banda);
-//   3.4 responder ao Cliente a ultima leitura de cada sensor.
+// Responsabilidades:
+//   - aceitar conexao de sensores e atuadores (e do cliente);
+//   - receber leituras de todos os sensores e armazenar o ultimo valor;
+//   - ligar/desligar atuadores quando uma leitura sai dos limites min/max
+//     configurados (controle bang-bang com histerese pela propria banda);
+//   - responder ao Cliente a ultima leitura de cada sensor.
 //
 // Modelo de concorrencia: uma thread por conexao (accept -> std::thread).
 // O estado compartilhado e protegido por um unico std::mutex.
 //
 // Simulacao acoplada: ao acionar um atuador, o Gerenciador reenvia o mesmo
-// COMANDO_ATUACAO para o sensor afetado, fechando a malha — assim o efeito do
+// COMANDO_ATUACAO para o sensor afetado, fechando a malha - assim o efeito do
 // atuador aparece nas proximas leituras (ver sensor.cpp).
 
 #include <netinet/in.h>
@@ -91,7 +91,7 @@ void definir_atuador(Cat atuador, bool ligar) {
     }
 }
 
-// Logica de controle (req 3.3). Chamada a cada leitura recebida, com g_mtx
+// Logica de controle. Chamada a cada leitura recebida, com g_mtx
 // travado. Compara a leitura com os limites e aciona os atuadores.
 void controlar(Cat sensor, float valor) {
     auto it = g_config.find(static_cast<uint8_t>(sensor));

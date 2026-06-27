@@ -6,3 +6,6 @@
 
 # Objetos
 *.o
+
+#config
+.clangd

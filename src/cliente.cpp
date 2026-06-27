@@ -1,4 +1,4 @@
-// cliente.cpp — Processo Cliente (interface do operador).
+// cliente.cpp - Processo Cliente (interface do operador).
 //
 // Uso: ./cliente <ip> <porta>
 //
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
 
     // Menu interativo.
     while (true) {
-        std::cout << "\n=== Estufa Inteligente — Cliente ===\n"
+        std::cout << "\n=== Estufa Inteligente - Cliente ===\n"
                   << " 1) Requisitar leitura de um sensor\n"
                   << " 2) Configurar limites (min/max) de uma categoria\n"
                   << " 0) Sair\n"

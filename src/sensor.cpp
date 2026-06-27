@@ -1,4 +1,4 @@
-// sensor.cpp — Processo de Sensor (parametrizado pela categoria).
+// sensor.cpp - Processo de Sensor (parametrizado pela categoria).
 //
 // Uso: ./sensor <T|U|O> <ip> <porta>
 //   T = temperatura interna, U = umidade do solo, O = nivel de CO2.
@@ -32,7 +32,7 @@ using namespace proto;
 namespace {
 
 std::mutex g_mtx;
-std::map<uint8_t, bool> g_atuador_ativo;  // categoria atuador -> ligado?
+std::map<uint8_t, bool> g_atuador_ativo; // categoria atuador -> ligado?
 std::atomic<bool> g_rodando{true};
 
 bool ativo(Cat atuador) {
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
     std::string ip = argv[2];
     uint16_t porta = static_cast<uint16_t>(std::atoi(argv[3]));
 
-    std::cout << std::unitbuf;  // descarrega cada log na hora
+    std::cout << std::unitbuf; // descarrega cada log na hora
 
     int fd = net::conectar(ip, porta);
     if (fd < 0) return 1;

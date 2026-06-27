@@ -1,4 +1,4 @@
-// net.hpp — Helpers de sockets TCP (camada de transporte) e envio/recepcao de
+// net.hpp - Helpers de sockets TCP (camada de transporte) e envio/recepcao de
 // mensagens do protocolo "ES".
 //
 // Toda a logica de "framing" (descobrir onde uma mensagem termina dentro do
