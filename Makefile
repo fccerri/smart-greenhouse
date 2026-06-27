@@ -10,7 +10,7 @@ BIN      := gerenciador sensor atuador cliente
 # Objetos da biblioteca compartilhada (protocolo + sockets).
 COMUM    := $(SRC)/protocol.cpp $(SRC)/net.cpp
 
-.PHONY: all clean
+.PHONY: all clean run
 all: $(BIN)
 
 gerenciador: $(SRC)/gerenciador.cpp $(COMUM)
@@ -24,6 +24,9 @@ atuador: $(SRC)/atuador.cpp $(COMUM)
 
 cliente: $(SRC)/cliente.cpp $(COMUM)
 	$(CXX) $(CXXFLAGS) -o $@ $^
+
+run:
+	@bash run.sh
 
 clean:
 	rm -f $(BIN) net.o
