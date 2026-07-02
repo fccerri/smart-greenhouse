@@ -16,7 +16,6 @@
 #include "net.hpp"
 #include "protocol.hpp"
 
-using namespace proto;
 
 int main(int argc, char** argv) {
     if (argc != 4) {
@@ -24,12 +23,12 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    Cat categoria;
+    proto::Cat categoria;
     switch (argv[1][0]) {
-        case 'A': categoria = Cat::AQUEC;  break;
-        case 'R': categoria = Cat::RESFR;  break;
-        case 'S': categoria = Cat::IRRIG;  break;
-        case 'I': categoria = Cat::INJCO2; break;
+        case 'A': categoria = proto::Cat::AQUEC;  break;
+        case 'R': categoria = proto::Cat::RESFR;  break;
+        case 'S': categoria = proto::Cat::IRRIG;  break;
+        case 'I': categoria = proto::Cat::INJCO2; break;
         default:
             std::cerr << "Categoria de atuador invalida: use A, R, S ou I.\n";
             return 1;
@@ -43,27 +42,27 @@ int main(int argc, char** argv) {
     if (fd < 0) return 1;
 
     // Handshake.
-    net::enviar_msg(fd, msg_simples(Tipo::CONEXAO, categoria, Cat::GER));
-    Mensagem resp;
-    if (!net::receber_msg(fd, resp) || resp.tipo != Tipo::CONF_CONEXAO) {
+    net::enviar_msg(fd, proto::msg_simples(proto::Tipo::CONEXAO, categoria, proto::Cat::GER));
+    proto::Mensagem resp;
+    if (!net::receber_msg(fd, resp) || resp.tipo != proto::Tipo::CONF_CONEXAO) {
         std::cerr << "[ATUADOR] handshake falhou.\n";
         ::close(fd);
         return 1;
     }
-    const char* nome = nome_cat(static_cast<uint8_t>(categoria));
+    const char* nome = proto::nome_cat(static_cast<uint8_t>(categoria));
     std::cout << "[" << nome << "] conectado e identificado. Aguardando comandos...\n";
 
     // Laco de comandos.
     bool ligado = false;
-    Mensagem m;
+    proto::Mensagem m;
     while (net::receber_msg(fd, m)) {
-        if (m.tipo == Tipo::COMANDO_ATUACAO) {
+        if (m.tipo == proto::Tipo::COMANDO_ATUACAO) {
             ligado = m.payload[0] != 0;
             std::cout << "[" << nome << "] COMANDO recebido -> "
                       << (ligado ? "LIGADO" : "DESLIGADO") << "\n";
-            net::enviar_msg(fd, msg_conf_atuacao(categoria, ligado));
-        } else if (m.tipo == Tipo::DESCONEXAO) {
-            net::enviar_msg(fd, msg_simples(Tipo::CONF_DESCONEXAO, categoria, Cat::GER));
+            net::enviar_msg(fd, proto::msg_conf_atuacao(categoria, ligado));
+        } else if (m.tipo == proto::Tipo::DESCONEXAO) {
+            net::enviar_msg(fd, proto::msg_simples(proto::Tipo::CONF_DESCONEXAO, categoria, proto::Cat::GER));
             break;
         }
     }

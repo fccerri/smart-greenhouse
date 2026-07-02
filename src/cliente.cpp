@@ -2,7 +2,7 @@
 //
 // Uso: ./cliente <ip> <porta>
 //
-// Fluxo (requisito 4 / Monitoramento):
+// Fluxo (Monitoramento):
 //   conecta -> CONEXAO -> espera CONF_CONEXAO -> menu interativo:
 //     1) requisitar a ultima leitura de um sensor (REQUISICAO_LEITURA);
 //     2) configurar limites min/max de uma categoria (ENVIO_CONFIG);
@@ -18,20 +18,19 @@
 #include "net.hpp"
 #include "protocol.hpp"
 
-using namespace proto;
 
 namespace {
 
 // Le uma categoria de sensor a partir de uma letra digitada (T/U/O).
-bool ler_sensor(Cat& out) {
+bool ler_sensor(proto::Cat& out) {
     std::cout << "  Sensor (T=temperatura, U=umidade, O=CO2): ";
     std::string s;
     std::getline(std::cin, s);
     if (s.empty()) return false;
     switch (s[0]) {
-        case 'T': case 't': out = Cat::TEMP; return true;
-        case 'U': case 'u': out = Cat::UMID; return true;
-        case 'O': case 'o': out = Cat::CO2;  return true;
+        case 'T': case 't': out = proto::Cat::TEMP; return true;
+        case 'U': case 'u': out = proto::Cat::UMID; return true;
+        case 'O': case 'o': out = proto::Cat::CO2;  return true;
         default:
             std::cout << "  Sensor invalido.\n";
             return false;
@@ -39,22 +38,22 @@ bool ler_sensor(Cat& out) {
 }
 
 void requisitar_leitura(int fd) {
-    Cat sensor;
+    proto::Cat sensor;
     if (!ler_sensor(sensor)) return;
 
-    net::enviar_msg(fd, msg_requisicao(sensor));
-    Mensagem resp;
-    if (!net::receber_msg(fd, resp) || resp.tipo != Tipo::RESPOSTA_LEITURA) {
+    net::enviar_msg(fd, proto::msg_requisicao(sensor));
+    proto::Mensagem resp;
+    if (!net::receber_msg(fd, resp) || resp.tipo != proto::Tipo::RESPOSTA_LEITURA) {
         std::cout << "  Sem resposta valida do Gerenciador.\n";
         return;
     }
     uint8_t sid = resp.payload[0];
-    float valor = bytes_para_float(resp.payload.data() + 1);
-    std::cout << "  Ultima leitura de " << nome_cat(sid) << " = " << valor << "\n";
+    float valor = proto::bytes_para_float(resp.payload.data() + 1);
+    std::cout << "  Ultima leitura de " << proto::nome_cat(sid) << " = " << valor << "\n";
 }
 
 void configurar_limites(int fd) {
-    Cat sensor;
+    proto::Cat sensor;
     if (!ler_sensor(sensor)) return;
 
     float lo, hi;
@@ -64,13 +63,13 @@ void configurar_limites(int fd) {
     if (!(std::cin >> hi)) { std::cin.clear(); std::cin.ignore(10000, '\n'); return; }
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-    net::enviar_msg(fd, msg_config(sensor, lo, hi));
-    Mensagem resp;
-    if (!net::receber_msg(fd, resp) || resp.tipo != Tipo::CONF_CONFIG) {
+    net::enviar_msg(fd, proto::msg_config(sensor, lo, hi));
+    proto::Mensagem resp;
+    if (!net::receber_msg(fd, resp) || resp.tipo != proto::Tipo::CONF_CONFIG) {
         std::cout << "  Sem confirmacao de configuracao.\n";
         return;
     }
-    std::cout << "  Configuracao confirmada para " << nome_cat(static_cast<uint8_t>(sensor))
+    std::cout << "  Configuracao confirmada para " << proto::nome_cat(static_cast<uint8_t>(sensor))
               << " (min=" << lo << ", max=" << hi << ").\n";
 }
 
@@ -88,9 +87,9 @@ int main(int argc, char** argv) {
     if (fd < 0) return 1;
 
     // Handshake.
-    net::enviar_msg(fd, msg_simples(Tipo::CONEXAO, Cat::CLI, Cat::GER));
-    Mensagem resp;
-    if (!net::receber_msg(fd, resp) || resp.tipo != Tipo::CONF_CONEXAO) {
+    net::enviar_msg(fd, proto::msg_simples(proto::Tipo::CONEXAO, proto::Cat::CLI, proto::Cat::GER));
+    proto::Mensagem resp;
+    if (!net::receber_msg(fd, resp) || resp.tipo != proto::Tipo::CONF_CONEXAO) {
         std::cerr << "[CLIENTE] handshake falhou.\n";
         ::close(fd);
         return 1;
@@ -114,9 +113,9 @@ int main(int argc, char** argv) {
     }
 
     // Desconexao.
-    net::enviar_msg(fd, msg_simples(Tipo::DESCONEXAO, Cat::CLI, Cat::GER));
-    Mensagem fim;
-    if (net::receber_msg(fd, fim) && fim.tipo == Tipo::CONF_DESCONEXAO) {
+    net::enviar_msg(fd, proto::msg_simples(proto::Tipo::DESCONEXAO, proto::Cat::CLI, proto::Cat::GER));
+    proto::Mensagem fim;
+    if (net::receber_msg(fd, fim) && fim.tipo == proto::Tipo::CONF_DESCONEXAO) {
         std::cout << "[CLIENTE] desconexao confirmada. Ate logo.\n";
     }
     ::close(fd);

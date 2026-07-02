@@ -29,7 +29,6 @@
 #include "net.hpp"
 #include "protocol.hpp"
 
-using namespace proto;
 
 namespace {
 
@@ -54,13 +53,13 @@ std::map<uint8_t, int>     g_fd_atuador;        // categoria atuador -> socket f
 std::map<uint8_t, bool>    g_estado_atuador;    // categoria atuador -> ligado?
 
 // Qual sensor cada atuador influencia (para o feedback da simulacao).
-Cat sensor_afetado(Cat atuador) {
+proto::Cat sensor_afetado(proto::Cat atuador) {
     switch (atuador) {
-        case Cat::AQUEC:
-        case Cat::RESFR:  return Cat::TEMP;
-        case Cat::IRRIG:  return Cat::UMID;
-        case Cat::INJCO2: return Cat::CO2;
-        default:          return Cat::TEMP;
+        case proto::Cat::AQUEC:
+        case proto::Cat::RESFR:  return proto::Cat::TEMP;
+        case proto::Cat::IRRIG:  return proto::Cat::UMID;
+        case proto::Cat::INJCO2: return proto::Cat::CO2;
+        default:                 return proto::Cat::TEMP;
     }
 }
 
@@ -68,7 +67,7 @@ Cat sensor_afetado(Cat atuador) {
 // So envia comando se o estado desejado for diferente do atual (idempotencia,
 // evita "spam" de mensagens nos limites). Reenvia o comando ao sensor afetado
 // para fechar a malha de simulacao.
-void definir_atuador(Cat atuador, bool ligar) {
+void definir_atuador(proto::Cat atuador, bool ligar) {
     uint8_t key = static_cast<uint8_t>(atuador);
     auto it = g_estado_atuador.find(key);
     if (it != g_estado_atuador.end() && it->second == ligar) {
@@ -79,21 +78,21 @@ void definir_atuador(Cat atuador, bool ligar) {
     // Envia ao atuador, se conectado.
     auto fa = g_fd_atuador.find(key);
     if (fa != g_fd_atuador.end()) {
-        net::enviar_msg(fa->second, msg_comando(Cat::GER, atuador, ligar));
-        logln("[GER] -> ", nome_cat(key), " : COMANDO_ATUACAO ",
+        net::enviar_msg(fa->second, proto::msg_comando(proto::Cat::GER, atuador, ligar));
+        logln("[GER] -> ", proto::nome_cat(key), " : COMANDO_ATUACAO ",
               (ligar ? "LIGAR" : "DESLIGAR"));
     }
     // Feedback para o sensor afetado (fecha a malha da simulacao).
-    Cat sa = sensor_afetado(atuador);
+    proto::Cat sa = sensor_afetado(atuador);
     auto fs = g_fd_sensor.find(static_cast<uint8_t>(sa));
     if (fs != g_fd_sensor.end()) {
-        net::enviar_msg(fs->second, msg_comando(Cat::GER, atuador, ligar));
+        net::enviar_msg(fs->second, proto::msg_comando(proto::Cat::GER, atuador, ligar));
     }
 }
 
 // Logica de controle. Chamada a cada leitura recebida, com g_mtx
 // travado. Compara a leitura com os limites e aciona os atuadores.
-void controlar(Cat sensor, float valor) {
+void controlar(proto::Cat sensor, float valor) {
     auto it = g_config.find(static_cast<uint8_t>(sensor));
     if (it == g_config.end() || !it->second.configurado) {
         return;  // sem limites configurados ainda -> nao atua
@@ -102,27 +101,27 @@ void controlar(Cat sensor, float valor) {
     float hi = it->second.maximo;
 
     switch (sensor) {
-        case Cat::TEMP:
+        case proto::Cat::TEMP:
             // Aquecedor sobe a temperatura; resfriador a reduz.
             if (valor > hi) {                 // quente demais
-                definir_atuador(Cat::RESFR, true);
-                definir_atuador(Cat::AQUEC, false);
+                definir_atuador(proto::Cat::RESFR, true);
+                definir_atuador(proto::Cat::AQUEC, false);
             } else if (valor < lo) {          // frio demais
-                definir_atuador(Cat::AQUEC, true);
-                definir_atuador(Cat::RESFR, false);
+                definir_atuador(proto::Cat::AQUEC, true);
+                definir_atuador(proto::Cat::RESFR, false);
             } else {                          // dentro da banda -> desliga
-                definir_atuador(Cat::AQUEC, false);
-                definir_atuador(Cat::RESFR, false);
+                definir_atuador(proto::Cat::AQUEC, false);
+                definir_atuador(proto::Cat::RESFR, false);
             }
             break;
-        case Cat::UMID:
+        case proto::Cat::UMID:
             // Histerese: liga ao cair abaixo do min, desliga ao passar do max.
-            if (valor < lo)      definir_atuador(Cat::IRRIG, true);
-            else if (valor > hi) definir_atuador(Cat::IRRIG, false);
+            if (valor < lo)      definir_atuador(proto::Cat::IRRIG, true);
+            else if (valor > hi) definir_atuador(proto::Cat::IRRIG, false);
             break;
-        case Cat::CO2:
-            if (valor < lo)      definir_atuador(Cat::INJCO2, true);
-            else if (valor > hi) definir_atuador(Cat::INJCO2, false);
+        case proto::Cat::CO2:
+            if (valor < lo)      definir_atuador(proto::Cat::INJCO2, true);
+            else if (valor > hi) definir_atuador(proto::Cat::INJCO2, false);
             break;
         default:
             break;
@@ -142,10 +141,10 @@ void desregistrar(int fd) {
 
 // Trata uma conexao do inicio ao fim (handshake + laco de mensagens).
 void tratar_conexao(int fd) {
-    Mensagem m;
+    proto::Mensagem m;
 
     // 1) Handshake: primeira mensagem deve ser CONEXAO.
-    if (!net::receber_msg(fd, m) || m.tipo != Tipo::CONEXAO) {
+    if (!net::receber_msg(fd, m) || m.tipo != proto::Tipo::CONEXAO) {
         std::cerr << "[GER] handshake invalido, fechando conexao.\n";
         ::close(fd);
         return;
@@ -153,36 +152,36 @@ void tratar_conexao(int fd) {
     uint8_t cat = m.remetente;
     {
         std::lock_guard<std::mutex> lk(g_mtx);
-        Cat c = static_cast<Cat>(cat);
-        if (c == Cat::TEMP || c == Cat::UMID || c == Cat::CO2)
+        proto::Cat c = static_cast<proto::Cat>(cat);
+        if (c == proto::Cat::TEMP || c == proto::Cat::UMID || c == proto::Cat::CO2)
             g_fd_sensor[cat] = fd;
-        else if (c == Cat::AQUEC || c == Cat::RESFR ||
-                 c == Cat::IRRIG || c == Cat::INJCO2)
+        else if (c == proto::Cat::AQUEC || c == proto::Cat::RESFR ||
+                 c == proto::Cat::IRRIG || c == proto::Cat::INJCO2)
             g_fd_atuador[cat] = fd;
         // Cliente nao precisa de registro de fd.
     }
-    net::enviar_msg(fd, msg_simples(Tipo::CONF_CONEXAO, Cat::GER,
-                                    static_cast<Cat>(cat)));
-    logln("[GER] <- ", nome_cat(cat), " : CONEXAO  (respondido CONF_CONEXAO)");
+    net::enviar_msg(fd, proto::msg_simples(proto::Tipo::CONF_CONEXAO, proto::Cat::GER,
+                                    static_cast<proto::Cat>(cat)));
+    logln("[GER] <- ", proto::nome_cat(cat), " : CONEXAO  (respondido CONF_CONEXAO)");
 
     // 2) Laco principal de mensagens.
     while (net::receber_msg(fd, m)) {
         switch (m.tipo) {
-            case Tipo::ENVIO_LEITURA: {
-                float v = bytes_para_float(m.payload.data());
+            case proto::Tipo::ENVIO_LEITURA: {
+                float v = proto::bytes_para_float(m.payload.data());
                 std::lock_guard<std::mutex> lk(g_mtx);
                 g_ultima_leitura[m.remetente] = v;
-                logln("[GER] <- ", nome_cat(m.remetente), " : leitura = ", v);
-                controlar(static_cast<Cat>(m.remetente), v);
+                logln("[GER] <- ", proto::nome_cat(m.remetente), " : leitura = ", v);
+                controlar(static_cast<proto::Cat>(m.remetente), v);
                 break;
             }
-            case Tipo::CONF_ATUACAO: {
+            case proto::Tipo::CONF_ATUACAO: {
                 bool ligado = m.payload[0] != 0;
-                logln("[GER] <- ", nome_cat(m.remetente), " : CONF_ATUACAO status=",
+                logln("[GER] <- ", proto::nome_cat(m.remetente), " : CONF_ATUACAO status=",
                       (ligado ? "LIGADO" : "DESLIGADO"));
                 break;
             }
-            case Tipo::REQUISICAO_LEITURA: {
+            case proto::Tipo::REQUISICAO_LEITURA: {
                 uint8_t sensor = m.payload[0];
                 float v = 0.0f;
                 {
@@ -190,41 +189,41 @@ void tratar_conexao(int fd) {
                     auto it = g_ultima_leitura.find(sensor);
                     if (it != g_ultima_leitura.end()) v = it->second;
                 }
-                net::enviar_msg(fd, msg_resposta(static_cast<Cat>(sensor), v));
+                net::enviar_msg(fd, proto::msg_resposta(static_cast<proto::Cat>(sensor), v));
                 logln("[GER] <- Cliente : REQUISICAO_LEITURA de ",
-                      nome_cat(sensor), " -> respondido ", v);
+                      proto::nome_cat(sensor), " -> respondido ", v);
                 break;
             }
-            case Tipo::ENVIO_CONFIG: {
+            case proto::Tipo::ENVIO_CONFIG: {
                 uint8_t sensor = m.payload[0];
-                float lo = bytes_para_float(m.payload.data() + 1);
-                float hi = bytes_para_float(m.payload.data() + 5);
+                float lo = proto::bytes_para_float(m.payload.data() + 1);
+                float hi = proto::bytes_para_float(m.payload.data() + 5);
                 {
                     std::lock_guard<std::mutex> lk(g_mtx);
                     g_config[sensor] = Limites{lo, hi, true};
                 }
-                net::enviar_msg(fd, msg_simples(Tipo::CONF_CONFIG,
-                                                Cat::GER, Cat::CLI));
-                logln("[GER] <- Cliente : CONFIG ", nome_cat(sensor),
+                net::enviar_msg(fd, proto::msg_simples(proto::Tipo::CONF_CONFIG,
+                                                proto::Cat::GER, proto::Cat::CLI));
+                logln("[GER] <- Cliente : CONFIG ", proto::nome_cat(sensor),
                       " min=", lo, " max=", hi, "  (respondido CONF_CONFIG)");
                 break;
             }
-            case Tipo::DESCONEXAO: {
-                net::enviar_msg(fd, msg_simples(Tipo::CONF_DESCONEXAO, Cat::GER,
-                                                static_cast<Cat>(m.remetente)));
-                logln("[GER] <- ", nome_cat(m.remetente),
+            case proto::Tipo::DESCONEXAO: {
+                net::enviar_msg(fd, proto::msg_simples(proto::Tipo::CONF_DESCONEXAO, proto::Cat::GER,
+                                                static_cast<proto::Cat>(m.remetente)));
+                logln("[GER] <- ", proto::nome_cat(m.remetente),
                       " : DESCONEXAO (respondido CONF_DESCONEXAO)");
                 goto fim;
             }
             default:
-                logln("[GER] tipo inesperado: ", nome_tipo(m.tipo),
-                      " de ", nome_cat(m.remetente));
+                logln("[GER] tipo inesperado: ", proto::nome_tipo(m.tipo),
+                      " de ", proto::nome_cat(m.remetente));
                 break;
         }
     }
 
 fim:
-    logln("[GER] conexao encerrada (", nome_cat(m.remetente), ")");
+    logln("[GER] conexao encerrada (", proto::nome_cat(m.remetente), ")");
     desregistrar(fd);
     ::close(fd);
 }
