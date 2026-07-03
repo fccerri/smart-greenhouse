@@ -17,7 +17,7 @@ namespace net {
 bool send_all(int fd, const uint8_t* buf, size_t n) {
     size_t enviados = 0;
     while (enviados < n) {
-        ssize_t r = ::send(fd, buf + enviados, n - enviados, 0);
+        ssize_t r = ::send(fd, buf + enviados, n - enviados, MSG_NOSIGNAL); //MSG_NOSIGNAL garante que cliente nao encerre em solicitacao de  leitura sem resosta
         if (r <= 0) {
             if (r < 0 && errno == EINTR) continue; // interrompido por sinal
             return false;

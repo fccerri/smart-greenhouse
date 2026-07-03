@@ -101,28 +101,37 @@ void controlar(proto::Cat sensor, float valor) {
     float hi = it->second.maximo;
 
     switch (sensor) {
-        case proto::Cat::TEMP:
-            // Aquecedor sobe a temperatura; resfriador a reduz.
+        case proto::Cat::TEMP: {
+            // Histerese com ponto medio: liga nos limites, desliga no centro
+            // da banda. Margem de seguranca = (hi - lo) / 2 antes de religar.
+            float meio = (lo + hi) / 2.0f;
             if (valor > hi) {                 // quente demais
                 definir_atuador(proto::Cat::RESFR, true);
                 definir_atuador(proto::Cat::AQUEC, false);
             } else if (valor < lo) {          // frio demais
                 definir_atuador(proto::Cat::AQUEC, true);
                 definir_atuador(proto::Cat::RESFR, false);
-            } else {                          // dentro da banda -> desliga
-                definir_atuador(proto::Cat::AQUEC, false);
+            } else if (valor <= meio) {       // resfriou o suficiente
                 definir_atuador(proto::Cat::RESFR, false);
+            } else {                          // aqueceu o suficiente
+                definir_atuador(proto::Cat::AQUEC, false);
             }
             break;
-        case proto::Cat::UMID:
-            // Histerese: liga ao cair abaixo do min, desliga ao passar do max.
-            if (valor < lo)      definir_atuador(proto::Cat::IRRIG, true);
-            else if (valor > hi) definir_atuador(proto::Cat::IRRIG, false);
+        }
+        case proto::Cat::UMID: {
+            // Histerese com ponto medio: liga abaixo do min, desliga no centro.
+            float meio = (lo + hi) / 2.0f;
+            if (valor < lo)           definir_atuador(proto::Cat::IRRIG, true);
+            else if (valor >= meio)   definir_atuador(proto::Cat::IRRIG, false);
             break;
-        case proto::Cat::CO2:
-            if (valor < lo)      definir_atuador(proto::Cat::INJCO2, true);
-            else if (valor > hi) definir_atuador(proto::Cat::INJCO2, false);
+        }
+        case proto::Cat::CO2: {
+            // Histerese com ponto medio: liga abaixo do min, desliga no centro.
+            float meio = (lo + hi) / 2.0f;
+            if (valor < lo)           definir_atuador(proto::Cat::INJCO2, true);
+            else if (valor >= meio)   definir_atuador(proto::Cat::INJCO2, false);
             break;
+        }
         default:
             break;
     }

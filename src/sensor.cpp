@@ -32,6 +32,14 @@ namespace {
 std::mutex g_mtx;
 std::map<uint8_t, bool> g_atuador_ativo; // categoria atuador -> ligado?
 std::atomic<bool> g_rodando{true};
+std::atomic<bool> g_conexao_perdida_alertada{false};
+
+void alertar_conexao_perdida(proto::Cat categoria) {
+    if (!g_conexao_perdida_alertada.exchange(true)) {
+        std::cerr << "[" << proto::nome_cat(static_cast<uint8_t>(categoria))
+                  << "] ALERTA: conexao com o Gerenciador perdida!\n";
+    }
+}
 
 bool ativo(proto::Cat atuador) {
     std::lock_guard<std::mutex> lk(g_mtx);
@@ -40,36 +48,44 @@ bool ativo(proto::Cat atuador) {
 }
 
 // Thread que recebe os comandos de atuacao reenviados pelo Gerenciador.
-void escutar_feedback(int fd) {
+void escutar_feedback(int fd, proto::Cat categoria) {
+    const char* nome = proto::nome_cat(static_cast<uint8_t>(categoria));
     proto::Mensagem m;
     while (g_rodando && net::receber_msg(fd, m)) {
         if (m.tipo == proto::Tipo::COMANDO_ATUACAO) {
             // O atuador alvo vem em destinatario (remetente e o Gerenciador).
             bool ligar = m.payload[0] != 0;
+            std::cout << "[" << nome << "] ALERTA: atuador "
+                      << proto::nome_cat(m.destinatario) << " foi "
+                      << (ligar ? "LIGADO" : "DESLIGADO")
+                      << " pelo Gerenciador.\n";
             std::lock_guard<std::mutex> lk(g_mtx);
             g_atuador_ativo[m.destinatario] = ligar;
         }
+    }
+    if (g_rodando) {
+        alertar_conexao_perdida(categoria);
     }
     g_rodando = false;
 }
 
 // Calcula o proximo valor simulado conforme a categoria e os atuadores ativos.
 float evoluir(proto::Cat categoria, float valor, std::mt19937& rng) {
-    std::uniform_real_distribution<float> ruido(-0.15f, 0.15f);
+    std::uniform_real_distribution<float> ruido(-0.3f, 0.3f);
     float delta = ruido(rng);
     switch (categoria) {
         case proto::Cat::TEMP:  // tende a esquentar; resfriador esfria, aquecedor esquenta
-            delta += 0.4f;
-            if (ativo(proto::Cat::RESFR)) delta -= 1.4f;
-            if (ativo(proto::Cat::AQUEC)) delta += 1.4f;
+            delta += 0.1f;
+            if (ativo(proto::Cat::RESFR)) delta -= 0.6f;
+            if (ativo(proto::Cat::AQUEC)) delta += 0.6f;
             break;
         case proto::Cat::UMID:  // solo seca naturalmente; irrigacao umedece
-            delta += -0.6f;
-            if (ativo(proto::Cat::IRRIG)) delta += 1.6f;
+            delta += -0.3f;
+            if (ativo(proto::Cat::IRRIG)) delta += 0.8f;
             break;
         case proto::Cat::CO2:   // plantas consomem CO2; injetor repoe
-            delta += -3.0f;
-            if (ativo(proto::Cat::INJCO2)) delta += 8.0f;
+            delta += -1.5f;
+            if (ativo(proto::Cat::INJCO2)) delta += 4.0f;
             break;
         default: break;
     }
@@ -114,7 +130,7 @@ int main(int argc, char** argv) {
               << "] conectado e identificado.\n";
 
     // Thread que escuta o feedback de atuacao.
-    std::thread receptor(escutar_feedback, fd);
+    std::thread receptor(escutar_feedback, fd, categoria);
 
     // Laco de envio de leituras a cada 1s.
     std::mt19937 rng(std::random_device{}());
@@ -128,6 +144,7 @@ int main(int argc, char** argv) {
     }
 
     g_rodando = false;
+    alertar_conexao_perdida(categoria);
     ::close(fd);
     if (receptor.joinable()) receptor.join();
     return 0;

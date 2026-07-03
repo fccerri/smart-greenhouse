@@ -7,7 +7,7 @@
 # subprocesso proprio. Ao pressionar Ctrl+C ou ao encerrar o cliente, todos
 # sao finalizados automaticamente.
 
-set -euo pipefail
+set -uo pipefail   # sem -e: o Ctrl+C no cliente nao deve abortar o script
 
 PORT=${1:-8080}
 HOST="127.0.0.1"
@@ -25,12 +25,21 @@ cleanup() {
     echo ""
     echo "[run] Encerrando componentes..."
     for pid in "${PIDS[@]}"; do
-        kill "$pid" 2>/dev/null || true
+        # SIGCONT acorda processos parados (estado T) que ignoram SIGTERM.
+        kill -CONT "$pid" 2>/dev/null || true
+        kill -TERM "$pid" 2>/dev/null || true
+    done
+    sleep 0.3
+    # SIGKILL como fallback para processos que nao responderam ao TERM.
+    for pid in "${PIDS[@]}"; do
+        kill -KILL "$pid" 2>/dev/null || true
     done
     wait 2>/dev/null || true
     echo "[run] Encerrado."
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT          # garante limpeza em qualquer saida
+trap 'exit 130' INT        # Ctrl+C -> exit -> dispara EXIT
+trap 'exit 143' TERM       # kill   -> exit -> dispara EXIT
 
 # ---------- gerenciador ----------
 echo "[run] Iniciando gerenciador na porta $PORT...  (log: logs/gerenciador.log)"
@@ -60,4 +69,4 @@ echo "      (Ctrl+C ou encerrar o cliente finaliza tudo)"
 echo ""
 
 # ---------- cliente (foreground - interativo) ----------
-./cliente "$HOST" "$PORT"
+./cliente "$HOST" "$PORT" || true

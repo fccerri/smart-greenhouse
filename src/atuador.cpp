@@ -61,13 +61,11 @@ int main(int argc, char** argv) {
             std::cout << "[" << nome << "] COMANDO recebido -> "
                       << (ligado ? "LIGADO" : "DESLIGADO") << "\n";
             net::enviar_msg(fd, proto::msg_conf_atuacao(categoria, ligado));
-        } else if (m.tipo == proto::Tipo::DESCONEXAO) {
-            net::enviar_msg(fd, proto::msg_simples(proto::Tipo::CONF_DESCONEXAO, categoria, proto::Cat::GER));
-            break;
         }
     }
 
-    std::cout << "[" << nome << "] conexao encerrada.\n";
+    // recv retornou false -> conexao caiu 
+    std::cerr << "[" << nome << "] ALERTA: conexao com o Gerenciador perdida!\n";
     ::close(fd);
     return 0;
 }
